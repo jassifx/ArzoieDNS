@@ -1,3 +1,0 @@
-- name: "Configuring Apache for Ubuntu"
-  import_tasks: ubuntu/main.yml
-  when: ansible_distribution|lower == 'ubuntu'

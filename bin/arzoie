@@ -1,0 +1,42 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+require dirname(__DIR__) . '/bootstrap.php';
+
+use Arzoie\Core\{Database, Env};
+use Arzoie\Models\Schema;
+use Arzoie\Services\Worker;
+
+try {
+    switch ($argv[1] ?? 'help') {
+        case 'key:generate': echo base64_encode(random_bytes(32)) . "\n"; break;
+        case 'migrate': Schema::migrate(); echo "Schema ready.\n"; break;
+        case 'user:create':
+            $email = strtolower($argv[2] ?? '');
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { throw new InvalidArgumentException('Usage: php bin/arzoie user:create admin@example.com'); }
+            if (PHP_OS_FAMILY === 'Windows' || !stream_isatty(STDIN)) { throw new RuntimeException('Use an interactive Linux terminal to enter the password securely'); }
+            fwrite(STDOUT, 'Administrator password (minimum 14 characters): ');
+            system('stty -echo');
+            try { $password = rtrim(fgets(STDIN), "\r\n"); } finally { system('stty echo'); echo "\n"; }
+            if (strlen($password) < 14) { throw new InvalidArgumentException('Use at least 14 characters'); }
+            Database::run('INSERT INTO users (email,password_hash,created_at) VALUES (?,?,?)', [$email, password_hash($password, PASSWORD_ARGON2ID), gmdate('Y-m-d H:i:s')]);
+            sodium_memzero($password); echo "Administrator created.\n";
+            break;
+        case 'ssh:keygen':
+            $path = Env::get('SSH_KEY_PATH');
+            if ($path === '' || is_file($path)) { throw new RuntimeException('Set SSH_KEY_PATH to an unused absolute filename'); }
+            if (!is_dir(dirname($path)) && !mkdir(dirname($path), 0700, true)) { throw new RuntimeException('Cannot create key directory'); }
+            $key = \phpseclib3\Crypt\EC::createKey('Ed25519');
+            file_put_contents($path, $key->toString('OpenSSH')); chmod($path, 0600);
+            file_put_contents($path . '.pub', $key->getPublicKey()->toString('OpenSSH') . "\n");
+            echo "Worker key created.\n"; break;
+        case 'worker': (new Worker())->run(in_array('--once', $argv, true)); break;
+        case 'schedule': Worker::schedule(); break;
+        case 'jobs:retry':
+            $id = filter_var($argv[2] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if (!$id) { throw new InvalidArgumentException('Usage: php bin/arzoie jobs:retry ID'); }
+            Database::run("UPDATE jobs SET state='queued', attempts=0, available_at=?, last_error=NULL WHERE id=? AND state='failed'", [gmdate('Y-m-d H:i:s'), $id]);
+            echo "Failed job queued if it exists. Bootstrap jobs need fresh credentials in the panel.\n"; break;
+        default: echo "ArzoieDNS\nCommands: key:generate, migrate, user:create EMAIL, ssh:keygen, worker [--once], schedule, jobs:retry ID\n";
+    }
+} catch (Throwable $e) { fwrite(STDERR, $e->getMessage() . "\n"); exit(1); }

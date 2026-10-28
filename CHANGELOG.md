@@ -1,46 +1,14 @@
 # Changelog
 
-## v1.1.7
+## 0.1.0 — repository reset (2026-10-28)
 
-* `[New]` Implement option to delete logs after X amount of days.
+- Replace the SnitchDNS/Python application with a PHP 8.5.12 custom MVC control plane.
+- Delegate authoritative DNS to BIND, with centralized pre-signing and SSH publication of local signed zones.
+- Add draft records, immutable revisions, per-server acknowledgments, deletion tombstones, retries, and signature renewal of published snapshots.
+- Add member lifecycle workflows, explicit EL 10/Debian 13+ policy, SSH fingerprint pinning, encrypted short-lived bootstrap secrets, and restricted automation privileges.
+- Add a local Bootstrap UI, deployment reports, health summaries and audit history.
+- Add PostgreSQL/MariaDB schemas, operational templates, tests and architecture/security/deployment documentation.
+- Add root/scoped contributor instructions, human/AI handoff, full project map, contribution guide, parallel ownership protocol, unclaimed task backlog and review/handoff templates.
+- License the rewritten application under Apache License 2.0, copyright 2026 Jaspreet Singh, with author attribution in NOTICE. Historical versions and third-party components retain their original licensing. No existing live servers are changed and no legacy data migration is supplied.
 
-## v1.1.6
-
-* `[Fix]` Fix CNAME responses.
-* `[Fix]` Added `markupsafe==2.0.1` in requirements as v2.1.0 has removed `soft_unicode`.
-
-## v1.1.5
-
-* `[New]` Added 'restart daemon' button in system settings.
-* `[New]` Added functionality to set the forwarding DNS' port as well as the IP.
-* `[New]` Added an option to clear the DNS cache when it hits the max limit set by the admin.
-* `[Update]` Update jQuery to v3.6.0, and jQuery Validate to v1.19.3.
-* `[Fix]` Removed requirement for SMTP User/Pass to be entered, in case the server runs on localhost.
-
-## v1.1.4
-
-* `[Fix]` Fix issue in API when creating and updating records without defining conditional data.
-
-## v1.1.3
-
-* `[Fix]` Fix issue when auto-creating zone from a log entry.
-
-## v1.1.2
-
-* `[New]` Implement support DNS Cache.
-* `[New]` Implement support for CAA records.
-* `[Fix]` Return SOA responses the right way.
-* `[Fix]` Fix issue to match domains regardless of upper/lower case formats.
-
-## v1.1.1
-
-* `[Fix]` Fix RADIUS password encoding from `ascii` to `utf8`.
-
-## v1.1.0
-
-* `[New]` Implement RADIUS authentication.
-* `[New]` Implement Regular Expression matching for zones.
-* `[New]` Optional functionality to change user password on Active Directory via LDAP.
-* `[Fix]` Update password complexity checks to accept non-7-bit ASCII.
-* `[Fix]` Fix 2FA secrets 160-bit key issue.
-* `[Fix]` Fix issue with LDAP password change for users that have never logged in before.
+This initial implementation requires live OS/database/BIND/SSH qualification. Parent DS verification, automated key rollover, MFA/RBAC, external probes and additional recovery hardening remain planned work; see `docs/roadmap.md`.

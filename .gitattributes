@@ -1,4 +1,5 @@
-app/static/css/lib/* linguist-vendored
-app/static/css/themes/* linguist-vendored
-app/static/fontawesome/* linguist-vendored
-app/static/js/lib/* linguist-vendored
+* text=auto
+*.sh text eol=lf
+/bin/arzoie text eol=lf
+/resources/member/arzoie-member text eol=lf
+/public/assets/bootstrap.min.css linguist-vendored

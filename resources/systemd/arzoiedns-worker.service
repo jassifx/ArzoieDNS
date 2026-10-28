@@ -1,0 +1,25 @@
+[Unit]
+Description=ArzoieDNS signing and SSH deployment worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=arzoie
+Group=arzoie
+WorkingDirectory=/opt/arzoiedns
+ExecStart=/usr/local/bin/php /opt/arzoiedns/bin/arzoie worker
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=950
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/arzoiedns
+SupplementaryGroups=arzoie-config
+
+[Install]
+WantedBy=multi-user.target

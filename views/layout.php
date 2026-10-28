@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?= $escape($title ?? 'Console') ?> · ArzoieDNS</title><link href="/assets/bootstrap.min.css" rel="stylesheet"><link href="/assets/app.css" rel="stylesheet"></head>
+<body><div class="app-shell"><aside class="sidebar"><a href="/" class="brand"><span class="brand-mark">A</span> Arzoie<span>DNS</span></a><div class="sidebar-label">AUTHORITATIVE NETWORK</div>
+<?php if (!empty($_SESSION['user_id'])): ?><nav class="nav flex-column"><a class="nav-link" href="/">Overview</a><a class="nav-link" href="/zones">Domains & records</a><a class="nav-link" href="/servers">Member servers</a><a class="nav-link" href="/reports">Reports & sync</a></nav><div class="sidebar-bottom"><span class="status-dot"></span> Self-hosted control plane<p class="small mt-3"><?= $escape($_SESSION['user_email']) ?></p><form method="post" action="/logout"><input type="hidden" name="_token" value="<?= $escape($_SESSION['_token']) ?>"><button class="btn btn-outline-light btn-sm">Sign out</button></form></div><?php endif; ?></aside>
+<main class="main"><header class="page-heading"><div><div class="eyebrow">ARZOIEDNS / CONTROL CENTER</div><h1><?= $escape($title ?? 'Console') ?></h1></div><span class="badge text-bg-light">BIND · DNSSEC · SSH</span></header>
+<?php if (!empty($_SESSION['flash'])): ?><div class="alert alert-info" role="status"><?= $escape($_SESSION['flash']) ?></div><?php unset($_SESSION['flash']); endif; ?>
+<?= $content ?>
+<footer>ArzoieDNS &copy; 2026 Jaspreet Singh. Licensed under Apache 2.0.<br>Independent nameservers. Local signed zones. All timestamps UTC.</footer></main></div></body></html>

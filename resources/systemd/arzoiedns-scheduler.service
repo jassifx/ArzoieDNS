@@ -1,0 +1,16 @@
+[Unit]
+Description=Queue ArzoieDNS health, reconciliation and signature renewal work
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=arzoie
+Group=arzoie
+WorkingDirectory=/opt/arzoiedns
+ExecStart=/usr/local/bin/php /opt/arzoiedns/bin/arzoie schedule
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+SupplementaryGroups=arzoie-config

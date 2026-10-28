@@ -1,0 +1,114 @@
+#!/bin/bash
+set -Eeuo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export LC_ALL=C
+umask 027
+[[ $EUID == 0 ]] || exit 77
+base=/var/lib/arzoiedns
+exec 9>/run/lock/arzoie-member.lock
+flock -w 60 9
+action=${1:-}
+valid_zone() {
+    [[ ${#1} -le 253 && $1 == *.* && $1 =~ ^[a-z0-9][a-z0-9.-]*[a-z0-9]$ ]] || return 1
+    local label
+    IFS=. read -r -a labels <<< "$1"
+    for label in "${labels[@]}"; do
+        [[ ${#label} -ge 1 && ${#label} -le 63 && $label =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || return 1
+    done
+}
+receipt() { printf '{"ok":true,"zone":"%s","revision":%s}\n' "$zone" "$revision"; }
+case "$action" in
+health)
+    [[ $# == 1 ]] || exit 64
+    rndc status >/dev/null
+    free_kb=$(df -Pk "$base" | awk 'NR==2 {print $4}')
+    load=$(cut -d' ' -f1 /proc/loadavg)
+    zones=$(find "$base/receipts" -maxdepth 1 -name '*.active' -type f | wc -l)
+    printf '{"bind":"running","disk_free_kb":%s,"load_1m":%s,"active_zones":%s,"checked_at":"%s"}\n' "$free_kb" "$load" "$zones" "$(date -u +%FT%TZ)"
+    ;;
+apply|delete)
+    zone=${2:-}; revision=${3:-}
+    valid_zone "$zone" && [[ $revision =~ ^[1-9][0-9]{0,17}$ ]] || exit 64
+    marker="$base/receipts/$zone"
+    previous=0
+    [[ ! -f "$marker.revision" ]] || read -r previous < "$marker.revision"
+    (( revision >= previous )) || { echo 'Refusing stale revision' >&2; exit 65; }
+    target="$base/zones/$zone.zone"
+    if [[ $action == delete ]]; then
+        [[ $# == 3 ]] || exit 64
+        if rndc zonestatus "$zone" >/dev/null 2>&1; then rndc delzone "$zone" >/dev/null; fi
+        if rndc zonestatus "$zone" >/dev/null 2>&1; then exit 70; fi
+        rm -f -- "$marker.active"
+        printf '%s\n' "$revision" > "$marker.revision"
+        # Keep the last signed file for recovery; it is no longer served.
+        receipt
+        exit 0
+    fi
+    [[ $# == 5 && ${4:-} =~ ^[0-9]{1,10}$ && ${5:-} =~ ^[a-f0-9]{64}$ ]] || exit 64
+    serial=$4; checksum=$5
+    staged="$base/incoming/$zone.$revision.zone"
+    [[ -f $staged && ! -L $staged && $(stat -c %s "$staged") -le 16777216 ]] || exit 66
+    temp=$(mktemp "$base/zones/.incoming.XXXXXXXX")
+    trap 'rm -f -- "$temp"' EXIT
+    # Copy unprivileged input once into a root-owned file before validating it.
+    cat -- "$staged" > "$temp"
+    [[ $(sha256sum "$temp" | cut -d' ' -f1) == "$checksum" ]] || exit 65
+    # Reject includes/directives so named-checkzone cannot read arbitrary paths.
+    if grep -Eiq '^[[:space:]]*\$(INCLUDE|GENERATE)' "$temp"; then exit 65; fi
+    named-checkzone "$zone" "$temp" >/dev/null
+    dnssec-verify -o "$zone" "$temp" >/dev/null
+    chown root:"$(cat /etc/arzoiedns/bind-group)" "$temp"
+    chmod 0640 "$temp"
+    old="$target.previous"
+    [[ ! -f $target ]] || cp -p -- "$target" "$old"
+    mv -f -- "$temp" "$target"
+    command -v restorecon >/dev/null 2>&1 && restorecon "$target" || true
+    loaded=0
+    if rndc zonestatus "$zone" >/dev/null 2>&1; then
+        if rndc reload "$zone" >/dev/null; then loaded=1; fi
+    else
+        if rndc addzone "$zone" "{ type primary; file \"$target\"; allow-update { none; }; allow-transfer { none; }; notify no; };" >/dev/null; then loaded=1; fi
+    fi
+    verified=0
+    if (( loaded )); then
+        for attempt in {1..10}; do
+            answer=$(dig @127.0.0.1 "$zone" SOA +norecurse +time=2 +tries=1)
+            actual=$(printf '%s\n' "$answer" | awk '$4=="SOA" {print $7; exit}')
+            if [[ $actual == "$serial" ]] && printf '%s\n' "$answer" | grep -Eq 'flags:.* aa[ ;]'; then verified=1; break; fi
+            sleep 1
+        done
+    fi
+    if (( ! verified )); then
+        if [[ -f $old ]]; then mv -f -- "$old" "$target"; rndc reload "$zone" >/dev/null || true;
+        else rndc delzone "$zone" >/dev/null 2>&1 || true; fi
+        echo 'BIND did not serve the expected authoritative SOA; previous zone restored when available' >&2
+        exit 70
+    fi
+    printf '%s\n' "$revision" > "$marker.revision"
+    printf '%s\n' "$checksum" > "$marker.active"
+    rm -f -- "$staged"
+    receipt
+    ;;
+deboard)
+    [[ $# == 1 ]] || exit 64
+    for active in "$base"/receipts/*.active; do
+        [[ -f $active ]] || continue
+        zone=$(basename "$active" .active)
+        valid_zone "$zone" || exit 65
+        if rndc zonestatus "$zone" >/dev/null 2>&1; then rndc delzone "$zone" >/dev/null; fi
+        rm -f -- "$active"
+    done
+    # Preserve BIND packages, signed artifacts, and operator SSH access.
+    rm -f /home/arzoie-sync/.ssh/authorized_keys
+    # Keep an explicit deny after removal; deleting the override would restore
+    # inherited wheel/sudo privileges to an already logged-in process.
+    printf 'arzoie-sync ALL=(ALL:ALL) !ALL\n' > /etc/sudoers.d/zz-arzoie-sync
+    chmod 0440 /etc/sudoers.d/zz-arzoie-sync
+    for group in wheel sudo; do
+        if getent group "$group" >/dev/null; then gpasswd -d arzoie-sync "$group" >/dev/null 2>&1 || true; fi
+    done
+    usermod -L -e 1 arzoie-sync
+    printf '{"ok":true,"state":"removed"}\n'
+    ;;
+*) echo 'Allowed operations: apply, delete, health, deboard' >&2; exit 64 ;;
+esac

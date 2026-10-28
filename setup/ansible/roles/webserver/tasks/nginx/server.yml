@@ -1,3 +1,0 @@
-- name: "Configuring nginx for Ubuntu"
-  import_tasks: ubuntu/main.yml
-  when: ansible_distribution|lower == 'ubuntu'

@@ -1,115 +1,119 @@
-# ![](docs/images/icon32.png) SnitchDNS
+# ArzoieDNS
 
-SnitchDNS is a database driven DNS Server with a Web UI, written in Python and [Twisted](https://github.com/twisted/twisted), that makes DNS administration easier with all configuration changed applied instantly without restarting any system services.
+Self-hosted authoritative DNS administration: **PHP 8.5.12 or newer, a custom MVC framework, Bootstrap 5, BIND 9, DNSSEC, and SSH-managed member servers.** PostgreSQL and MariaDB are supported control-plane databases. Public DNS does not depend on PHP or the database.
 
-One of its main features is the logging of all DNS queries allowing the discovery of network traffic endpoints, and it can also be used to implement canary tokens as it supports notifications via e-mail, web push, Slack, and Teams. Red teamers can also use SnitchDNS to monitor phishing domains for sandboxes, integrate with SIEM solutions, restrict responses to specific IP ranges, egress data via a DNS tunnel and catch-all domains, and more.
+Created by **Jaspreet Singh**. The rewritten application is licensed under [Apache License 2.0](LICENSE), with author attribution in [NOTICE](NOTICE). Distributed forks must retain applicable notices as required by the license. Third-party components retain their [separate licenses](THIRD_PARTY_NOTICES.md).
 
-* [Installation](#installation)
-  * [Update to Latest Version](docs/setup/update.md)
-  * [The Manual Way](docs/setup/manual.md)
-  * [The Ansible Way](docs/setup/ansible.md)
-  * [The Docker Way](docs/setup/docker.md)
-* [Documentation](#documentation)
-  * [Screenshots](docs/general/screenshots.md)
-* [Basic Features](#basic-features)
-* [Use Cases](#use-cases)
-* [Limitations](#limitations)
-* [Contributing](#contributing)
-* [Security](#security)
-* [Credits](#credits)
+This repository replaces the former Python/SnitchDNS application. There is no automatic migration from its database. Historical versions in Git retain their original licenses; the new license applies to this rewritten application.
 
-## Dependencies
+## Design
 
-* Python 3.6+
+```mermaid
+flowchart LR
+    Admin[Administrator / HTTPS] --> MVC[PHP MVC panel]
+    MVC --> DB[(PostgreSQL or MariaDB)]
+    Timer[Systemd scheduler] --> DB
+    DB --> Worker[Single worker + DNSSEC signer]
+    Worker --> Keys[Private KSK / ZSK on signer only]
+    Worker -->|Pinned SSH + SFTP| A[BIND member / region A]
+    Worker -->|Pinned SSH + SFTP| B[BIND member / region B]
+    Worker -->|Pinned SSH + SFTP| C[BIND member / region C]
+    A --> ZA[Local signed zones]
+    B --> ZB[Local signed zones]
+    C --> ZC[Local signed zones]
+```
 
-## Installation
+Record edits are drafts. Publishing creates an immutable revision with a new SOA serial. The worker validates and signs once, uploads the signed zone only to members missing that revision, validates it remotely, and reloads **only that zone**. New zones use `rndc addzone`; removals use `rndc delzone`. A member acknowledges only after a local authoritative SOA check. Failed/offline members remain pending. No global `rndc reload` occurs during normal deployment.
 
-Please make sure you install using `git` rather than by downloading the repo manually.
+Members retain their zones and BIND's persistent dynamic-zone configuration across panel outages and restarts. DNSSEC signatures are valid for 30 days; a scheduled renewal creates a new revision with ten days remaining. An outage longer than signature validity will affect validating clients: monitor the signer and expiration reports.
 
-* [Update to Latest Version](docs/setup/update.md)
-* [The Manual Way](docs/setup/manual.md)
-* [The Ansible Way](docs/setup/ansible.md)
-* [The Docker Way](docs/setup/docker.md)
+## Implemented baseline
+
+- Custom router, controllers, repositories, views, environment configuration, CSRF protection, secure sessions, Argon2id login, per-account lockout, and audit records.
+- Dashboard, domain/record drafts, publish/delete actions, member onboarding/retry/drain/deboarding, deployment matrix, DNSSEC DS display, health reports, and job history.
+- A/AAAA/CNAME/MX/TXT/NS/SRV/CAA/PTR validation; deterministic BIND zone rendering and CNAME/RRset checks.
+- PostgreSQL/MariaDB schema; transactional revision publication and a retryable job queue.
+- BIND smart signing, central ECDSA KSK/ZSK generation, signed artifact hashes and signature verification.
+- Pinned SSH host keys, SFTP, encrypted short-lived bootstrap credentials, dedicated restricted sudo helper, OS preflight, and fresh-member provisioning.
+- Local-zone rollback after failed load verification; durable deletion tombstones; periodic reconciliation and signing renewal.
+
+## Platform policy
+
+| Role | Platforms |
+| --- | --- |
+| Panel / worker | Enterprise Linux 10 or Debian 13+, with independently supplied PHP 8.5.12+ and BIND utilities |
+| BIND members | Rocky Linux 10, AlmaLinux 10, Oracle Linux 10, RHEL 10; Debian 13+ |
+| Database | PostgreSQL 16+ or MariaDB 10.11+ (InnoDB) |
+| Unsupported | Ubuntu; EL 9 and older; Debian 12 and older; containers as production members |
+
+Do not assume a distribution's default PHP packages meet the minimum. Installation intentionally does not silently add third-party repositories. RHEL package access requires valid subscriptions; Oracle/Rocky/Alma repositories must be configured by the operator. The platform matrix is a target policy, not a claim that live qualification has passed on every distribution.
+
+## Start here
+
+**Contributors and AI agents:** start with [the contributor guide](CONTRIBUTING.md), [repository instructions](AGENTS.md), and [current handoff](HANDOFF.md). For coordinated simultaneous work, use [the parallel-work protocol](docs/ai/parallel-work.md) and [task board](docs/ai/tasks.md). Multiple coding agents do not change the single-worker production constraint.
+
+1. Read [the architecture](docs/architecture.md), [security model](docs/security.md), and [installation guide](docs/installation.md).
+2. Install PHP 8.5.12+ with PDO (`pdo_pgsql` or `pdo_mysql`), Sodium, mbstring, OpenSSL, and Argon2 support; Composer; and BIND signing utilities.
+3. Run `composer install --no-dev --prefer-dist --classmap-authoritative`.
+4. Copy `.env.example` to `.env`, configure the database and paths, and set `APP_KEY` using `php bin/arzoie key:generate`.
+5. Run `php bin/arzoie migrate`, `php bin/arzoie user:create admin@example.com`, and `php bin/arzoie ssh:keygen` under the appropriate service accounts.
+6. Configure HTTPS/PHP-FPM and the supplied worker and scheduler units. Point the web document root **only** at `public/`.
+7. Onboard fresh members with console-verified fingerprints, add domains/records, publish, verify reports, and configure registrar delegation and DS records.
+
+For local UI development only, set `APP_ENV=development`, configure a test database, and run `php -S 127.0.0.1:8080 -t public`. The built-in server is not a production deployment.
+
+## Checks
+
+```sh
+composer validate --strict
+php tests/lint.php
+php tests/run.php
+php tests/views.php
+php tests/database.php            # isolated test database; see installation guide
+bash tests/member-helper.sh      # mocked commands; never requires root
+```
+
+The standalone tests exercise input safety, zone rendering, selective sync decisions, platform policy, credential encryption, and remote-helper failure paths. Live BIND/DNSSEC, SSH, distro, firewall/MAC, database-engine and multi-region failure tests are mandatory before production. See [the delivery and acceptance plan](docs/roadmap.md) for outstanding work and the release gates. **This is an initial implementation, not a production-certified release.**
+
+## Project structure
+
+| Location | Responsibility |
+| --- | --- |
+| `public/` | Only web document root; HTTP entry point and local Bootstrap assets |
+| `src/Core/` | Custom MVC/framework primitives, PDO, encryption, process execution and audit |
+| `src/Controllers/` | Authentication, domains, member actions, overview and reporting HTTP adapters |
+| `src/Models/` | Portable schema, transactional zone revisions and job persistence |
+| `src/Dns/` | DNS rules, zone rendering, DNSSEC signing and selective sync decisions |
+| `src/Infrastructure/` | Supported-OS policy and pinned SSH/SFTP transport |
+| `src/Services/` | Provisioning, reconciliation, worker and maintenance orchestration |
+| `views/` | Escaped PHP templates for the administration console |
+| `resources/` | Member scripts, Nginx/FPM and systemd templates |
+| `tests/` | Standalone, view, database and mocked member-helper checks |
+| `bin/arzoie` | Administrative and worker CLI |
+| `docs/` | Architecture, operations, security, plans, evidence and AI coordination |
+
+See [the complete project map](docs/project-structure.md) for every maintained component, database entity, runtime path and request/deployment flow. Private configuration, dependencies and generated tools are intentionally excluded from source control.
+
+## Working together
+
+Give each contributor a bounded outcome and disjoint write paths. Keep schema, routes, shared protocol changes, dependencies and integration documentation under one coordinator. Use separate worktrees when the baseline is available in Git; in a shared checkout, preserve other contributors' edits and avoid branch switching or broad Git operations. See [the detailed protocol](docs/ai/parallel-work.md).
+
+Use [HANDOFF.md](HANDOFF.md) to resume work, [the roadmap](docs/roadmap.md) for acceptance goals, and [validation](docs/validation.md) for executed evidence. These are distinct: implemented source is not proof that a live infrastructure scenario passed.
 
 ## Documentation
 
-For general documentation [see here](docs/general/index.md)
+- [Documentation guide for humans and AI](docs/README.md)
+- [Contributing and verification matrix](CONTRIBUTING.md)
+- [Repository-wide instructions](AGENTS.md)
+- [Current human/AI handoff](HANDOFF.md)
+- [Complete project map](docs/project-structure.md)
+- [AI task workflow](docs/ai/instructions.md)
+- [Parallel ownership and integration](docs/ai/parallel-work.md)
+- [Task board](docs/ai/tasks.md) and [handoff template](docs/ai/handoff-template.md)
+- [Architecture and state machines](docs/architecture.md)
+- [Installation and operation](docs/installation.md)
+- [Security and trust boundaries](docs/security.md)
+- [Delivery plan and acceptance tests](docs/roadmap.md)
+- [Executed checks and validation limits](docs/validation.md)
 
-### Screenshots
-
-For screenshots [see here](docs/general/screenshots.md)
-
-## Basic Features
-
-* Database Driven.
-  * Changes are reflected immediately on each DNS request.
-  * Supported DBMS:
-    * SQLite
-    * MySQL / MariaDB
-    * Postgres
-* DNS Server
-  * Support for common DNS Records.
-    * `A, AAAA, AFSDB, CNAME, DNAME, HINFO, MX, NAPTR, NS, PTR, RP, SOA, SPF, SRV, SSHFP, TSIG, TXT`.
-  * Catch-All Domains.
-    * Ability to match any subdomain (no matter the depth) to a specific parent domain, for instance *.hello.example.com.
-  * Unmatched Record Forwarding.
-    * Functionality to intercept specific queries (ie only `A` and `CNAME`) and forward all other records to a third-party DNS server (ie Google).
-  * Regular Expression matching.   
-* Tags and Aliases.
-* IP Rules
-  * Configure Allow/Block rules per domain.
-* Notifications. Receive a notification when a domain is resolved, via:
-  * E-mail
-  * Web Push
-  * Slack
-  * Microsoft Teams
-* User Management
-  * Multi-User support
-    * Each user is given their own subdomain to use.
-  * LDAP/RADIUS Support
-  * Two Factor Authentication
-  * Password Complexity Management
-* Logging
-  * All DNS queries are logged, whether they have been matched or not.
-  * CSV Logging for SIEM integration.
-* Swagger 2.0 API
-* Deployment
-  * Ansible scripts for Ubuntu 18.04 / 20.04
-  * Docker
-  * CLI support for zone, record, user, and settings management.
-  * CSV Export/Import 
-  
-## Use Cases
-
-SnitchDNS can be used for:
-
-* A DNS Forwarding Server - Allowing you to monitor all requests via a Web GUI.
-* Red Teams - Implement IP restrictions to block sandboxes, monitor phishing domain resolutions and e-mails, and restrict access to known IP ranges.
-* DNS Tunnel - Log all DNS requests and egress data.
-* Let's Encrypt DNS Challenge, using the API or the CLI interface.
-* Ad-blocking.
-* Canary Tokens.
-* Integrate with SIEM solutions.
-
-For more details on scenarios please see the [Use Cases Document](docs/general/use_cases.md)
-
-## Limitations
-
-* SnitchDNS currently runs in a single-thread, therefore may not be suitable for environments with hundreds of DNS requests per minute.
-
-## Contributing
-
-If you wish to contribute pull requests, feature requests, and bug reports - feel free to raise an issue (especially before you start writing code). 
-
-## Security
-
-If you identify any security vulnerabilities within SnitchDNS, for the time being please contact me on twitter - [@sadreck](https://twitter.com/sadreck)
-
-## Credits
-
-**UI**
-* Theme from [Bootswatch](https://bootswatch.com/)
-* Images from [Freepik](http://www.freepik.com/)
-
-**Development**
-* Lambros Zannettos | [@\_C960\_](https://twitter.com/_C960_) - For his help with writing the Dockerfile.
+Authoritative DNS answers are served by BIND. This application deliberately does not implement a DNS protocol server in PHP.
