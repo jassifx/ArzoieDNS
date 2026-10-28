@@ -8,6 +8,11 @@ Use stable task IDs. A real assignment must record owner, status, write set, dep
 
 | ID | Outcome / acceptance | Candidate write scope | Dependencies | Owner | State |
 | --- | --- | --- | --- | --- | --- |
+| INS-01 | Finalize installer contracts, fixed 80/443 wizard, signed release/DB lifecycle catalog and recovery journal | New installer contract/fixture paths; shared policy via integrator | [Installer design](../installer-design.md) | — | unclaimed |
+| INS-02 | Qualified PHP/OS adapters and explicit eligible MariaDB/PostgreSQL local installation | Assigned platform/database installer modules and disposable-VM fixtures | INS-01, DB-01; supported OS access | — | unclaimed |
+| INS-03 | Fixed-port Nginx/FPM, Let's Encrypt bootstrap, redirect policy and independent renewal | Assigned web/TLS installer modules and fixtures | INS-01, INS-02; broker contract coordinated | — | unclaimed |
+| INS-04 | In-app certificate status/provider/custom import via restricted broker | Assigned certificate service/UI/fixtures; schema/routes via integrator | INS-03; protected secrets and reauthentication | — | unclaimed |
+| INS-05 | Interrupted/repeated install and certificate recovery qualification across OS/DB matrix | Assigned installer integration fixtures and dated evidence | INS-02, INS-03, INS-04 | — | unclaimed |
 | DB-01 | Run current repository fixtures on PostgreSQL and MariaDB; record versions, failures and fixes | `tests/database.php`, dedicated DB fixtures; request repository changes from owner | Disposable engines; coordinator controls schema changes | — | unclaimed |
 | JOB-01 | Prove queue claim/retry/restart behavior and publication concurrency with real engines | Dedicated queue/concurrency fixtures, `JobRepository.php`, `Worker.php` by explicit assignment | DB-01; interfaces coordinated | — | unclaimed |
 | MIG-01 | Versioned migrations with locking and upgrade/restore acceptance | New migration module/fixtures; schema/bootstrap wiring by integrator | DB-01; approved migration contract | — | unclaimed |

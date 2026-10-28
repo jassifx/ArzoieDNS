@@ -2,6 +2,8 @@
 
 ## Qualification status
 
+The one-entry-point installer is specified in [the installer design](installer-design.md) but is not implemented yet. Its web ports are fixed at 80/443; it will ask for the database engine and enforce the documented LTS/maintenance policy. The commands below remain the current manual procedure, not an already automated installer.
+
 The code includes explicit EL 10 and Debian 13+ member paths. No live member, database service, or external infrastructure was provided during the initial rewrite. Use disposable VMs for the acceptance matrix before serving real delegated domains. There is deliberately no Ubuntu setup path.
 
 ## Control host prerequisites

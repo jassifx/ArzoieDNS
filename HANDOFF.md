@@ -12,7 +12,7 @@ The public service must remain independent of the panel/database. Each member se
 
 - The former Python/SnitchDNS application and Ubuntu deployment scripts have been replaced in the working tree. The rewritten application is copyright 2026 Jaspreet Singh under Apache License 2.0 with attribution in NOTICE. Historical versions retain their original licensing; third-party components retain their separate notices.
 - No legacy database migration exists. No live servers, registrar records, production databases or DNSSEC keys were modified during the rewrite.
-- No commit or deployment is implied by this handoff. Inspect `git status --short`; the rewrite and documentation may still be uncommitted.
+- The rewrite was committed and pushed as `14a21c7` to `origin/master`. Later changes may be uncommitted; inspect `git status --short`. A source push is not a deployment or a successful CI qualification.
 - Local ignored `.tools/` and `vendor/` may exist from validation. They are not portable dependencies to assume on another machine.
 
 ## Implemented source paths
@@ -41,6 +41,8 @@ The [validation record](docs/validation.md) describes the rewrite checks: PHP 8.
 The documentation-only handoff work adds a project map, contribution rules and parallel-work protocol. It does not certify additional application capabilities.
 
 ## Highest-priority next work
+
+New design requirement: [automated installer and application TLS management](docs/installer-design.md). Ports are fixed at 80/443; the proposed installer asks which DB to install and enforces the documented long-term maintenance policy. MariaDB uses designated LTS releases; PostgreSQL retains its official five-year support model without an invented LTS label. INS-01 through INS-05 are planned/unclaimed. No installer code or package/service changes were made as part of the design update.
 
 1. **Qualify persistence:** run `tests/database.php` separately on PostgreSQL and MariaDB; test queue claims, retry exhaustion, simultaneous publications and rollback behavior beyond the current fixtures. Add versioned migrations before changing an installed schema.
 2. **Qualify real BIND publication:** sign a test zone, serve it on disposable members, verify UDP/TCP and DNSSEC externally, and confirm targeted reload and restart persistence. Test interruption after remote success and before acknowledgment.

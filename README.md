@@ -50,6 +50,8 @@ Do not assume a distribution's default PHP packages meet the minimum. Installati
 
 ## Start here
 
+An [automated installer and certificate-management design](docs/installer-design.md) is specified for fixed HTTP/HTTPS ports **80/443**, an interactive database choice, long-term database maintenance, and later in-app TLS management. It is **planned, not implemented**; use the manual installation procedure below today.
+
 **Contributors and AI agents:** start with [the contributor guide](CONTRIBUTING.md), [repository instructions](AGENTS.md), and [current handoff](HANDOFF.md). For coordinated simultaneous work, use [the parallel-work protocol](docs/ai/parallel-work.md) and [task board](docs/ai/tasks.md). Multiple coding agents do not change the single-worker production constraint.
 
 1. Read [the architecture](docs/architecture.md), [security model](docs/security.md), and [installation guide](docs/installation.md).
@@ -112,6 +114,7 @@ Use [HANDOFF.md](HANDOFF.md) to resume work, [the roadmap](docs/roadmap.md) for 
 - [Task board](docs/ai/tasks.md) and [handoff template](docs/ai/handoff-template.md)
 - [Architecture and state machines](docs/architecture.md)
 - [Installation and operation](docs/installation.md)
+- [Automated installer and TLS design](docs/installer-design.md)
 - [Security and trust boundaries](docs/security.md)
 - [Delivery plan and acceptance tests](docs/roadmap.md)
 - [Executed checks and validation limits](docs/validation.md)

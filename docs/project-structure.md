@@ -60,6 +60,7 @@ ArzoieDNS/
 │   ├── architecture.md           Data model, publication and lifecycle design
 │   ├── security.md               Trust, privileges, secrets and limitations
 │   ├── installation.md           Operator setup, deployment and recovery
+│   ├── installer-design.md       Planned automated installation, DB lifecycle and TLS
 │   ├── roadmap.md                Delivery stages and acceptance gates
 │   ├── validation.md             Dated executed checks and explicit limits
 │   └── ai/

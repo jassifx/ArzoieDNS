@@ -5,6 +5,7 @@
 | New human contributor | [Project README](../README.md), [contributing](../CONTRIBUTING.md) | [Project structure](project-structure.md), [handoff](../HANDOFF.md) |
 | New AI contributor | [Root instructions](../AGENTS.md), [handoff](../HANDOFF.md) | [AI workflow](ai/instructions.md), [parallel protocol](ai/parallel-work.md) |
 | Operator installing the panel | [Installation](installation.md) | [Security](security.md), [validation limits](validation.md) |
+| Installer / certificate-management contributor | [Installer design](installer-design.md) | [Architecture](architecture.md), [security](security.md), [task board](ai/tasks.md) |
 | DNS / infrastructure engineer | [Architecture](architecture.md) | [Member contracts](../resources/AGENTS.md), [roadmap](roadmap.md) |
 | Reviewer | [Contributing](../CONTRIBUTING.md) | Relevant scoped instructions, tests and [validation](validation.md) |
 | Coordinator / next session | [Handoff](../HANDOFF.md) | [Task board](ai/tasks.md), [handoff template](ai/handoff-template.md) |

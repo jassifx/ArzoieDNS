@@ -48,6 +48,8 @@ Acceptance: access-control tests cover every route and mutation, secrets remain 
 
 ## Stage 5 — release operations
 
+The [installer design](installer-design.md) defines the automated setup workstreams INS-01 through INS-05: fixed ports 80/443, a database-engine interview with long-term maintenance policy, safe PHP-FPM/Nginx provisioning, and independent certificate lifecycle management. These are planned, not completed features.
+
 - Reproducible locked dependencies and vulnerability checks on every release; signed release artifacts and upgrade rollback procedures.
 - CI database and disposable-VM matrix; scheduled recovery drills and public delegation/DNSSEC checks.
 - Separate control-plane installer/package pipeline with approved PHP 8.5 repositories/builds, TLS setup and SELinux/AppArmor policy qualification.

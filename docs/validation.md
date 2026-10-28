@@ -40,3 +40,7 @@ Verified maintained Markdown links/anchors and referenced files against the work
 Replaced the current root license with the official Apache License 2.0 text, added NOTICE crediting Jaspreet Singh, updated Composer metadata and current licensing documentation, and added the author/license credit to the shared UI footer. Historical versions in Git were not relicensed. Bootstrap and dependency licenses remain separate.
 
 Executed: `composer validate --strict`, PHP syntax check for `views/layout.php`, all six view rendering/escaping checks, stale current-MIT-claim search, and `git diff --check`; all passed. The Apache license text was retrieved from `https://www.apache.org/licenses/LICENSE-2.0.txt`. Applicable redistribution attribution is required under Apache 2.0; an unremovable footer or mandatory credit on every private/network-only use is not claimed.
+
+## Installer architecture update — 2026-10-28
+
+Documented the planned installer, fixed ports 80/443, database selection and long-term maintenance catalog, staged/recoverable setup, and independent TLS lifecycle with later application management. Cross-linked the design from contributor/operator entry points and added unclaimed INS-01 through INS-05 tasks. Checked repository Markdown links/anchors and `git diff --check`. No installer exists yet; no packages, services, databases, certificates or application runtime code changed in this documentation update. Application/VM tests were not rerun or newly claimed.

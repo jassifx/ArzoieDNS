@@ -18,6 +18,7 @@ These instructions apply to the entire repository. Read any nearer `AGENTS.md` b
 - Supported member policy: Rocky, AlmaLinux, Oracle Linux and RHEL **10**; Debian **13+**. Ubuntu is unsupported. Preserve explicit OS checks in PHP and shell.
 - Single control host and **one worker** with a host-local lock. Multiple coding agents are supported; concurrent production workers/controllers are not.
 - No managed cloud DNS dependency. Existing DNSSEC keys, operator SSH access and live service continuity matter more than convenience.
+- Planned control-plane installer: fixed web ports 80/443, no configurable UI ports; ask which database to install. MariaDB must be an eligible maintained LTS series. PostgreSQL has five-year major support, not an official LTS edition; never mislabel it. Follow `docs/installer-design.md` for catalog, support-horizon, TLS and recovery rules. The installer is not implemented yet.
 
 ## Invariants to preserve
 
